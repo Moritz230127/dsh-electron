@@ -109,6 +109,14 @@ requires no change in this host; if the CLI contract changes, only
 
 ## Install
 
+### Prerequisite
+
+Install the official DSH CLI once:
+
+```bash
+npm install -g @deepseek-ai/dsh
+```
+
 ### AUR package (source)
 
 A PKGBUILD is provided at `aur/dsh-electron/PKGBUILD`. It builds the host from the GitHub release

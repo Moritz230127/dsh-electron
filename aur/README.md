@@ -1,6 +1,9 @@
 # Local AUR package
 
-`aur/dsh-electron/PKGBUILD` builds and installs the complete Linux host:
+`aur/dsh-electron/PKGBUILD` builds and installs the complete Linux host.
+Prerequisite: the official DSH CLI must be installed once (`npm install -g @deepseek-ai/dsh`).
+
+```bash
 
 ```bash
 cd aur/dsh-electron
