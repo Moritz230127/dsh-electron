@@ -4,8 +4,6 @@
 Prerequisite: the official DSH CLI must be installed once (`npm install -g @deepseek-ai/dsh`).
 
 ```bash
-
-```bash
 cd aur/dsh-electron
 makepkg --printsrcinfo > .SRCINFO   # regenerate after PKGBUILD edits
 makepkg -si
