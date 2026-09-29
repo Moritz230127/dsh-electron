@@ -16,7 +16,7 @@ depends=(
 )
 makedepends=('npm')
 source=("$pkgname-$pkgver.tar.gz::https://github.com/Moritz230127/dsh-electron/archive/refs/tags/v$pkgver.tar.gz")
-sha256sums=('SKIP')
+sha256sums=('a493f4eb6a33ddcb160d274939105668072fb9b96bafe1c44136efa90bab9475')
 options=('!strip' '!debug')
 
 build() {

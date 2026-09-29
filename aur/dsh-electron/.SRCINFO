@@ -31,6 +31,6 @@ pkgbase = dsh-electron
 	options = !strip
 	options = !debug
 	source = dsh-electron-0.1.0.tar.gz::https://github.com/Moritz230127/dsh-electron/archive/refs/tags/v0.1.0.tar.gz
-	sha256sums = SKIP
+	sha256sums = a493f4eb6a33ddcb160d274939105668072fb9b96bafe1c44136efa90bab9475
 
 pkgname = dsh-electron
