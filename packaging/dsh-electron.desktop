@@ -1,0 +1,33 @@
+# DSH Electron — launcher and XDG autostart entry.
+#
+# The same file works for both roles:
+#   launcher:  install -Dm644 packaging/dsh-electron.desktop ~/.local/share/applications/dsh-electron.desktop
+#   autostart: install -Dm644 packaging/dsh-electron.desktop ~/.config/autostart/dsh-electron.desktop
+# Keep only one autostart mechanism (XDG autostart or a niri `spawn-at-startup`
+# line), otherwise you get two windows / two dsh web processes.
+#
+# Exec assumes `dsh-electron` is on PATH. That is NOT true for the pacman
+# package (binary: "/opt/DSH Electron/dsh-electron") nor for the unpacked dir.
+# For autostart, either symlink the binary into ~/.local/bin/dsh-electron, or
+# replace Exec/TryExec below with the absolute path, e.g.
+#   /home/Arch/工作区/dsh-electron/dist/linux-unpacked/dsh-electron
+#   "/opt/DSH Electron/dsh-electron"
+#
+# StartupWMClass makes niri/Wayland associate the running Electron window with
+# this .desktop file; the real app-id is still verified with `niri msg windows`
+# (see packaging/niri-window-rule.kdl).
+
+[Desktop Entry]
+Type=Application
+Version=1.0
+Name=DSH Electron
+GenericName=DeepSeek Harness desktop host
+Comment=Run the local DeepSeek Harness web UI in a dedicated Electron window
+Exec=dsh-electron
+TryExec=dsh-electron
+Icon=dsh-electron
+Terminal=false
+Categories=Development;
+StartupNotify=true
+StartupWMClass=dsh-electron
+X-GNOME-Autostart-enabled=true

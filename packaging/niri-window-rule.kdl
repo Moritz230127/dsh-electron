@@ -1,0 +1,43 @@
+// DSH Electron — niri window rule: exempt the app window from the global
+// opacity/blur styling.
+//
+// This file is a snippet, not a standalone config. Paste the `window-rule`
+// block below into ~/.config/niri/config.kdl AFTER the global window-rule that
+// sets opacity (and after any global blur defaults). niri applies matching
+// window rules in order and later rules win, so the app-specific override must
+// come last.
+//
+// Verify the real app-id while DSH Electron is running (on this machine the
+// socket is /run/user/1000/niri.wayland-1.1984.sock; the suffix changes every
+// session):
+//
+//   ls -l /run/user/$(id -u)/niri.*.sock
+//   NIRI_SOCKET=/run/user/1000/niri.wayland-1.1984.sock niri msg windows
+//   NIRI_SOCKET=/run/user/1000/niri.wayland-1.1984.sock niri msg --json windows
+//
+// Look for the "App ID:" field (JSON: .app_id). Expected value: dsh-electron
+// (lowercase, matching package.json "name" / electron-builder
+// linux.executableName / the desktop file's StartupWMClass). If it differs,
+// replace the regex below with the observed value.
+//
+// Notes, validated with `niri validate` against niri 26.04:
+// - `opacity 1.0` overrides the global window opacity for this window.
+// - `background-effect { blur false }` turns off the blur for this window.
+//   The top-level `blur { ... }` block is a separate global default; this
+//   per-window effect overrides it. `saturation 1.0` is the neutral value and
+//   is optional.
+// After editing, run `niri validate`; niri reloads the config on save, or use
+// `niri msg action load-config-file`.
+
+window-rule {
+    match app-id=r#"^dsh-electron$"#
+
+    // Override the global opacity rule for this window.
+    opacity 1.0
+
+    // Exclude the window from the global blur effect.
+    background-effect {
+        blur false
+        saturation 1.0
+    }
+}

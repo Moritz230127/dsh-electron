@@ -1,0 +1,127 @@
+{
+  "name": "dsh-electron",
+  "productName": "DSH Electron",
+  "version": "0.1.0",
+  "description": "Unofficial Linux host for the official DeepSeek Harness Web UI — self-healing, version-decoupled, zero-maintenance.",
+  "main": "src/main/main.js",
+  "private": true,
+  "license": "MIT",
+  "author": {
+    "name": "Moritz001",
+    "email": "moritz001@163.com"
+  },
+  "scripts": {
+    "start": "electron .",
+    "prestart": "node scripts/ensure-electron.js",
+    "dev": "electron . --dev",
+    "predev": "node scripts/ensure-electron.js",
+    "test": "node --test test/",
+    "test:smoke": "node test/acceptance/run-smoke.js",
+    "postinstall": "node scripts/ensure-electron.js",
+    "package:dir": "electron-builder --linux dir --publish never",
+    "package:linux": "electron-builder --linux pacman AppImage --publish never",
+    "host": "node scripts/run-dsh-host.js"
+  },
+  "devDependencies": {
+    "electron": "44.4.5",
+    "electron-builder": "^26.15.3"
+  },
+  "build": {
+    "appId": "io.dsh.electron",
+    "productName": "DSH Electron",
+    "artifactName": "${name}-${version}-${arch}.${ext}",
+    "npmRebuild": false,
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "src/**/*",
+      "package.json"
+    ],
+    "linux": {
+      "target": [
+        "dir",
+        "pacman",
+        "AppImage"
+      ],
+      "category": "Development",
+      "executableName": "dsh-electron",
+      "synopsis": "Stable Electron host for DeepSeek Harness",
+      "description": "Unofficial self-healing Linux host for the official DeepSeek Harness Web UI (official UI unchanged).",
+      "desktop": {
+        "entry": {
+          "Name": "DSH Electron",
+          "Comment": "DeepSeek Harness desktop host",
+          "Type": "Application",
+          "Terminal": "false",
+          "StartupWMClass": "dsh-electron"
+        }
+      },
+      "syncDesktopName": true,
+      "maintainer": "Moritz001 <moritz001@163.com>"
+    },
+    "pacman": {
+      "artifactName": "${name}-${version}-${arch}.pkg.tar.xz",
+      "depends": [
+        "c-ares",
+        "libgcc",
+        "glibc",
+        "gtk3",
+        "libevent",
+        "libffi",
+        "libpulse",
+        "nss",
+        "zlib",
+        "fontconfig",
+        "brotli",
+        "libjpeg-turbo",
+        "flac",
+        "libdrm",
+        "libxml2",
+        "minizip",
+        "opus",
+        "libxslt",
+        "harfbuzz",
+        "freetype2",
+        "xdg-utils"
+      ]
+    },
+    "extraResources": [
+      {
+        "from": "src/host",
+        "to": "host",
+        "filter": [
+          "**/*"
+        ]
+      },
+      {
+        "from": "src/main/runtime",
+        "to": "main/runtime",
+        "filter": [
+          "*.js"
+        ]
+      },
+      {
+        "from": "scripts/run-dsh-host.js",
+        "to": "scripts/run-dsh-host.js"
+      },
+      {
+        "from": "packaging/dsh-host.service",
+        "to": "dsh-host.service"
+      },
+      {
+        "from": "packaging/icon.png",
+        "to": "icon.png"
+      }
+    ]
+  },
+  "homepage": "https://github.com/Moritz230127/dsh-electron",
+  "desktopName": "dsh-electron",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Moritz230127/dsh-electron.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Moritz230127/dsh-electron/issues"
+  }
+}

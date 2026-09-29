@@ -1,0 +1,18 @@
+# DSH host launcher entry (v0.2).
+#
+# Install to ~/.local/share/applications/deepseek-harness.desktop so the
+# application launcher starts the stable host service instead of the old
+# Chrome PWA. This file is user-level; no sudo.
+[Desktop Entry]
+Type=Application
+Version=1.0
+Name=DeepSeek Harness
+GenericName=DSH Stable Host
+Comment=Official DeepSeek Harness WebUI on the stable self-healing host
+Exec=systemctl --user start dsh-host.service
+TryExec=systemctl
+Icon=deepseek-harness
+Terminal=false
+Categories=Development;
+StartupNotify=false
+StartupWMClass=dsh-electron

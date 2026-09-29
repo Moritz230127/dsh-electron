@@ -1,0 +1,39 @@
+# DSH host supervisor — systemd user unit (v0.2).
+#
+# Packaged variant (default): runs the supervisor shipped inside the app:
+#   /opt/DSH Electron/resources/host/supervisor.js
+#
+# Dev variant (repository checkout): install it with
+#   packaging/install-host.sh --deploy --dev --app-root <repo>
+# which rewrites ExecStart to the safe launcher:
+#   ExecStart=/usr/bin/node "<repo>/scripts/run-dsh-host.js"
+# The launcher resolves the app root, exports DSH_HOST_STATE_DIR /
+# DSH_HOST_ELECTRON / DSH_HOST_DEV_APP and execs
+#   /usr/bin/node <repo>/src/host/supervisor.js
+# Manual dev run without systemd:
+#   DSH_HOST_DEV_APP=1 /usr/bin/node <repo>/scripts/run-dsh-host.js
+#
+# WARNING: Conflicts=dsh-web.service. Starting dsh-host.service stops a running
+# dsh-web.service (and therefore the old session). install-host.sh only
+# enables/disables units; it never starts or stops either one.
+
+[Unit]
+Description=DSH host supervisor (official WebUI + Electron attach UI)
+Conflicts=dsh-web.service
+After=graphical-session.target
+PartOf=graphical-session.target
+# Keep the supervisor alive even across repeated crashes.
+StartLimitIntervalSec=0
+
+[Service]
+Type=simple
+# Optional user overrides; the file may not exist.
+EnvironmentFile=-%h/.config/dsh-host.env
+# Packaged path. install-host.sh renders the dev variant when asked.
+ExecStart=/usr/bin/node "/opt/DSH Electron/resources/host/supervisor.js"
+Restart=always
+RestartSec=3
+TimeoutStopSec=15
+
+[Install]
+WantedBy=default.target

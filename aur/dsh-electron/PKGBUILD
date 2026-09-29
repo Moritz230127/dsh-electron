@@ -1,0 +1,55 @@
+# Maintainer: Moritz001 <moritz001@163.com>
+# Unofficial Linux host for the official DeepSeek Harness Web UI.
+# Source builds the current release tag from GitHub and packages the unpacked app.
+pkgname=dsh-electron
+pkgver=0.1.0
+pkgrel=1
+pkgdesc='Unofficial self-healing Linux host for the official DeepSeek Harness Web UI'
+arch=('x86_64')
+url='https://github.com/Moritz230127/dsh-electron'
+license=('MIT')
+depends=(
+  'nodejs'
+  'c-ares' 'libgcc' 'glibc' 'gtk3' 'libevent' 'libffi' 'libpulse' 'nss'
+  'zlib' 'fontconfig' 'brotli' 'libjpeg-turbo' 'flac' 'libdrm' 'libxml2'
+  'minizip' 'opus' 'libxslt' 'harfbuzz' 'freetype2' 'xdg-utils'
+)
+makedepends=('npm')
+source=("$pkgname-$pkgver.tar.gz::https://github.com/Moritz230127/dsh-electron/archive/refs/tags/v$pkgver.tar.gz")
+sha256sums=('SKIP')
+options=('!strip' '!debug')
+
+build() {
+  cd "$pkgname-$pkgver"
+  export ELECTRON_MIRROR="${ELECTRON_MIRROR:-https://npmmirror.com/mirrors/electron/}"
+  npm ci --foreground-scripts --no-audit --no-fund
+  npm run package:dir
+}
+
+package() {
+  cd "$pkgname-$pkgver"
+
+  install -d "$pkgdir/opt/DSH Electron"
+  cp -a dist/linux-unpacked/. "$pkgdir/opt/DSH Electron/"
+
+  install -Dm644 packaging/dsh-host.service \
+    "$pkgdir/usr/lib/systemd/user/dsh-host.service"
+  install -d "$pkgdir/usr/lib/systemd/user/default.target.wants"
+  ln -s ../dsh-host.service \
+    "$pkgdir/usr/lib/systemd/user/default.target.wants/dsh-host.service"
+
+  install -Dm644 packaging/deepseek-harness.desktop \
+    "$pkgdir/usr/share/applications/deepseek-harness.desktop"
+  install -Dm644 packaging/icon.png \
+    "$pkgdir/usr/share/icons/hicolor/256x256/apps/deepseek-harness.png"
+  install -Dm644 packaging/icon-32.png \
+    "$pkgdir/usr/share/icons/hicolor/32x32/apps/deepseek-harness.png"
+
+  install -Dm644 packaging/niri-window-rule.kdl \
+    "$pkgdir/usr/share/doc/$pkgname/niri-window-rule.kdl"
+  install -Dm644 docs/V0.2-HANDOFF.md \
+    "$pkgdir/usr/share/doc/$pkgname/V0.2-HANDOFF.md"
+  install -Dm644 docs/DEPLOY.md \
+    "$pkgdir/usr/share/doc/$pkgname/DEPLOY.md"
+  install -Dm644 LICENSE "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+}

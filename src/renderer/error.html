@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta
+    http-equiv="Content-Security-Policy"
+    content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; img-src data:; base-uri 'none'; form-action 'none'; connect-src 'none'"
+  />
+  <meta name="color-scheme" content="dark" />
+  <title>DSH Electron — Error</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    }
+    * { box-sizing: border-box; }
+    html, body { height: 100%; margin: 0; }
+    body {
+      display: grid;
+      place-items: center;
+      background: radial-gradient(circle at 50% 30%, #2a1620 0%, #120b14 64%);
+      color: #f0dce6;
+    }
+    main {
+      width: min(44rem, 92vw);
+      padding: 2rem;
+      border: 1px solid rgba(240, 220, 230, 0.14);
+      border-radius: 14px;
+      background: rgba(20, 12, 18, 0.72);
+    }
+    h1 { margin: 0 0 0.75rem; font-size: 1.25rem; }
+    .message { margin: 0 0 1rem; color: #d8b9c9; line-height: 1.55; white-space: pre-wrap; }
+    pre {
+      margin: 0 0 1.25rem;
+      padding: 0.75rem;
+      max-height: 12rem;
+      overflow: auto;
+      border-radius: 8px;
+      background: rgba(0, 0, 0, 0.35);
+      color: #c9a7b7;
+      font-size: 0.8rem;
+      white-space: pre-wrap;
+      word-break: break-word;
+      -webkit-user-select: text;
+      user-select: text;
+    }
+    .actions { display: flex; gap: 0.75rem; flex-wrap: wrap; }
+    button {
+      appearance: none;
+      border: 1px solid rgba(240, 220, 230, 0.28);
+      border-radius: 8px;
+      padding: 0.55rem 1.1rem;
+      background: rgba(240, 220, 230, 0.08);
+      color: inherit;
+      font: inherit;
+      cursor: pointer;
+    }
+    button:hover:not(:disabled) { background: rgba(240, 220, 230, 0.16); }
+    button:disabled { opacity: 0.45; cursor: default; }
+    button.primary { background: #7aa2f7; border-color: #7aa2f7; color: #0b1220; font-weight: 600; }
+    button.primary:hover:not(:disabled) { background: #9ab6f9; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1 id="error-title">Harness could not be started</h1>
+    <p class="message" id="error-message">The local DeepSeek Harness web UI did not become available.</p>
+    <pre id="error-detail" hidden></pre>
+    <div class="actions">
+      <button class="primary" id="retry" type="button">Retry</button>
+      <button id="quit" type="button">Quit</button>
+    </div>
+  </main>
+  <script>
+    'use strict';
+    (function () {
+      const params = new URLSearchParams(window.location.search);
+      const byId = (id) => document.getElementById(id);
+      const title = params.get('title');
+      const message = params.get('message');
+      const detail = params.get('detail');
+
+      if (title) byId('error-title').textContent = title;
+      if (message) byId('error-message').textContent = message;
+
+      const detailNode = byId('error-detail');
+      if (detail) {
+        detailNode.textContent = detail;
+        detailNode.hidden = false;
+      } else {
+        detailNode.remove();
+      }
+
+      const retry = byId('retry');
+      const quit = byId('quit');
+      const api = window.dshShell;
+
+      if (api && typeof api.retry === 'function') {
+        retry.addEventListener('click', async () => {
+          retry.disabled = true;
+          try {
+            await api.retry();
+          } catch {
+            retry.disabled = false;
+          }
+        });
+      } else {
+        retry.disabled = true;
+        retry.title = 'Retry is unavailable in this build.';
+      }
+
+      if (api && typeof api.quit === 'function') {
+        quit.addEventListener('click', () => {
+          try {
+            api.quit();
+          } catch {
+            // The window is closing anyway.
+          }
+        });
+      } else {
+        quit.disabled = true;
+      }
+    })();
+  </script>
+</body>
+</html>
