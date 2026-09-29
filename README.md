@@ -148,6 +148,15 @@ node scripts/run-dsh-host.js --app-root "$PWD"
 `npm run package:linux` → AppImage and pacman package (needs `libcrypt-compat` for electron-builder's
 fpm on Arch; see `packaging/electron-builder-notes.md`).
 
+The GitHub release additionally ships `dsh-electron-0.1.0-1-x86_64.pkg.tar.zst`, a standard
+makepkg/pacman package that installs the systemd user unit, launcher, official DSH tray icon and
+docs on top of the verified payload.
+
+```bash
+sudo pacman -U dsh-electron-0.1.0-1-x86_64.pkg.tar.zst
+systemctl --user enable --now dsh-host.service
+```
+
 ## Verification
 
 `npm test` currently passes **207/207** tests. The v0.2 feature set was verified with real DSH and
