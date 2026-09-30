@@ -1,8 +1,29 @@
-# Maintainer: Moritz001 <moritz001@163.com>
-# Unofficial Linux host for the official DeepSeek Harness Web UI.
-# Source builds the current release tag from GitHub and packages the unpacked app.
+# ============================================================================
+#  dsh-electron —— 官方 DSH WebUI 的稳定 Linux 承载平台
+#
+#  为什么需要它
+#    官方 DeepSeek Harness Desktop 只有 Windows/macOS 版本；Linux 上此前用
+#    Chrome PWA 承载官方 WebUI，存在共享日常浏览器/GPU 进程、无 supervisor、
+#    DSH 预览版更新易把页面宿主一起带崩等问题。本包提供 Linux 侧宿主：
+#      · 官方 WebUI 零修改（不加前端补丁）
+#      · supervisor 管理 dsh web 子进程与 Electron GUI，生命周期解耦
+#      · 新版 DSH 启动失败时自动回退内部 known-good runtime
+#      · GUI 关闭仅隐藏到托盘，DSH 任务继续后台运行
+#
+#  单一真理源
+#    GitHub: https://github.com/Moritz230127/dsh-electron
+#    本 PKGBUILD 从 release tag tarball 源码构建完整包（npm/electron-builder），
+#    并安装 systemd 用户单元、桌面入口、官方 DSH 托盘图标与文档。
+#
+#  登记
+#    ADR-0011 §B8；完整决策见 ADR-0036。
+#
+#  维护者/联系
+#    Moritz001 <moritz001@163.com>
+# ============================================================================
+
 pkgname=dsh-electron
-pkgver=0.1.0
+pkgver=0.1.1
 pkgrel=1
 pkgdesc='Unofficial self-healing Linux host for the official DeepSeek Harness Web UI'
 arch=('x86_64')
@@ -16,7 +37,7 @@ depends=(
 )
 makedepends=('npm')
 source=("$pkgname-$pkgver.tar.gz::https://github.com/Moritz230127/dsh-electron/archive/refs/tags/v$pkgver.tar.gz")
-sha256sums=('a493f4eb6a33ddcb160d274939105668072fb9b96bafe1c44136efa90bab9475')
+sha256sums=('3ad2e3a5b0fcd7eab99027ad0df41cd03f8367de47ca0a1eb1db5b4885c7b534')
 options=('!strip' '!debug')
 
 build() {
@@ -24,6 +45,13 @@ build() {
   export ELECTRON_MIRROR="${ELECTRON_MIRROR:-https://npmmirror.com/mirrors/electron/}"
   npm ci --foreground-scripts --no-audit --no-fund
   npm run package:dir
+}
+
+check() {
+  cd "$pkgname-$pkgver"
+  test -x 'dist/linux-unpacked/dsh-electron'
+  test -f 'dist/linux-unpacked/resources/host/supervisor.js'
+  test -f 'dist/linux-unpacked/resources/main/runtime/harness-runtime.js'
 }
 
 package() {
@@ -34,9 +62,11 @@ package() {
 
   install -Dm644 packaging/dsh-host.service \
     "$pkgdir/usr/lib/systemd/user/dsh-host.service"
-  install -d "$pkgdir/usr/lib/systemd/user/default.target.wants"
+  install -d "$pkgdir/usr/lib/systemd/user/graphical-session.target.wants"
   ln -s ../dsh-host.service \
-    "$pkgdir/usr/lib/systemd/user/default.target.wants/dsh-host.service"
+    "$pkgdir/usr/lib/systemd/user/graphical-session.target.wants/dsh-host.service"
+
+  install -Dm755 scripts/dsh-host-open "$pkgdir/usr/bin/dsh-host-open"
 
   install -Dm644 packaging/deepseek-harness.desktop \
     "$pkgdir/usr/share/applications/deepseek-harness.desktop"
@@ -51,5 +81,7 @@ package() {
     "$pkgdir/usr/share/doc/$pkgname/V0.2-HANDOFF.md"
   install -Dm644 docs/DEPLOY.md \
     "$pkgdir/usr/share/doc/$pkgname/DEPLOY.md"
+  install -Dm644 README.md \
+    "$pkgdir/usr/share/doc/$pkgname/README.md"
   install -Dm644 LICENSE "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
 }

@@ -457,6 +457,34 @@ test('a crashed UI is restarted without stopping the DSH runtime', async () => {
   }
 });
 
+test('reopenUi replaces the UI window without stopping the DSH runtime', async () => {
+  const base = createBase();
+  const { Runtime } = createRuntimeClass([{ type: 'ready', url: READY_URL }]);
+  const recorder = createSpawnRecorder();
+  const supervisor = new HostSupervisor(makeConfig(base), {
+    HarnessRuntime: Runtime,
+    spawn: recorder.spawn,
+    waitForHealth: async () => ({ statusCode: 200 }),
+    env: {},
+  });
+
+  try {
+    await supervisor.start();
+    const uiCalls = () => recorder.calls.filter((call) => call.command === '/fake/electron');
+    assert.equal(uiCalls().length, 1);
+    const oldUi = uiCalls()[0].child;
+
+    assert.equal(supervisor.reopenUi('unit-test'), true);
+    assert.deepEqual(oldUi.killSignals, ['SIGTERM']);
+    await waitFor(() => uiCalls().length === 2, 5000);
+    assert.equal(supervisor.currentRuntime.runtime.isRunning(), true, 'DSH survived UI reopen');
+    assert.equal(readUrlFile(supervisor.paths.urlFile), READY_URL);
+  } finally {
+    await supervisor.stop('test');
+    fs.rmSync(base.base, { recursive: true, force: true });
+  }
+});
+
 test('intentional UI exit (code 0) is not restarted', async () => {
   const base = createBase();
   const { Runtime } = createRuntimeClass([{ type: 'ready', url: READY_URL }]);
