@@ -23,7 +23,7 @@
 # ============================================================================
 
 pkgname=dsh-electron
-pkgver=0.1.1
+pkgver=0.1.2
 pkgrel=1
 pkgdesc='Unofficial self-healing Linux host for the official DeepSeek Harness Web UI'
 arch=('x86_64')
@@ -37,7 +37,7 @@ depends=(
 )
 makedepends=('npm')
 source=("$pkgname-$pkgver.tar.gz::https://github.com/Moritz230127/dsh-electron/archive/refs/tags/v$pkgver.tar.gz")
-sha256sums=('3ad2e3a5b0fcd7eab99027ad0df41cd03f8367de47ca0a1eb1db5b4885c7b534')
+sha256sums=('519c87cf8a2e7bbae10157d950481eccc334e45c3e72e7d7d8cbe8bbdaae6455')
 options=('!strip' '!debug')
 
 build() {
