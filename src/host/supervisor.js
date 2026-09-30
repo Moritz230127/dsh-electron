@@ -25,6 +25,8 @@ const SNAPSHOT_RETRY = 'cp -a --reflink=auto';
 const FALLBACK_COPY_COMMAND = 'cp -a';
 const EXHAUSTED_RETRY_MS = 60000;
 const UI_KILL_GRACE_MS = 5000;
+const UI_REOPEN_KILL_TIMEOUT_MS = 5000;
+const UI_REOPEN_KILL_GRACE_MS = 1000;
 const MAX_SNAPSHOTS = 2;
 const DEFAULT_ENTRY_REL = path.join('lib', 'bin.js');
 
@@ -526,6 +528,10 @@ class HostSupervisor extends EventEmitter {
       HarnessRuntime: seams.HarnessRuntime || HarnessRuntime,
       waitForHealth: typeof seams.waitForHealth === 'function' ? seams.waitForHealth : waitForHealth,
       sleep: typeof seams.sleep === 'function' ? seams.sleep : null,
+      uiReopenTimeoutMs:
+        Number.isFinite(seams.uiReopenTimeoutMs) && seams.uiReopenTimeoutMs >= 0
+          ? seams.uiReopenTimeoutMs
+          : null,
       exists: typeof seams.exists === 'function' ? seams.exists : (target) => existsSafe(fsModule, target),
     };
     this._logger = logger;
@@ -559,6 +565,7 @@ class HostSupervisor extends EventEmitter {
     this._uiRetryToken = 0;
     this._uiRestarts = [];
     this._uiIntentionalExit = false;
+    this._uiReopenTimeoutMs = this.seams.uiReopenTimeoutMs;
   }
 
   get paths() {
@@ -579,6 +586,12 @@ class HostSupervisor extends EventEmitter {
    *
    * Used by the desktop launcher via SIGUSR1: a hidden/closed/blank GUI is
    * replaced with a fresh attach window while tasks keep running.
+   *
+   * The old Electron process must release its single-instance lock before the
+   * replacement is spawned. If both overlap, the replacement fails the lock,
+   * exits with code 0, and would otherwise be mistaken for an intentional
+   * user close (GUI stays gone). So: stop the old UI, wait for its exit, and
+   * only then start the replacement (SIGKILL as a bounded fallback).
    */
   reopenUi(reason = 'manual') {
     if (this._stopping) return false;
@@ -586,17 +599,52 @@ class HostSupervisor extends EventEmitter {
     this._uiIntentionalExit = false;
     const previous = this._uiChild;
     this._uiChild = null;
-    if (previous !== null) {
-      try {
-        previous.kill('SIGTERM');
-      } catch (error) {
-        this._logger.warn(`host: failed to stop old UI for reopen: ${error.message}`);
-      }
-    }
-    // Cancel any pending budgeted retry and start immediately.
+    // Cancel any pending budgeted retry; we start immediately once the old
+    // window is really gone.
     this._uiRetryToken += 1;
     this._uiRetryActive = false;
-    this._ensureUi();
+
+    if (previous === null || typeof previous.once !== 'function' || typeof previous.kill !== 'function') {
+      this._ensureUi();
+      return true;
+    }
+
+    let settled = false;
+    let escalation = null;
+    const finish = () => {
+      if (settled) return;
+      settled = true;
+      if (escalation !== null) {
+        this._clearTimeout(escalation);
+        escalation = null;
+      }
+      if (this._stopping) return;
+      this._ensureUi();
+    };
+
+    previous.once('exit', finish);
+    previous.once('close', finish);
+    previous.once('error', finish);
+
+    const killTimeoutMs =
+      this._uiReopenTimeoutMs === null ? UI_REOPEN_KILL_TIMEOUT_MS : this._uiReopenTimeoutMs;
+    escalation = this._setTimeout(() => {
+      escalation = null;
+      this._logger.warn('host: old UI did not exit after SIGTERM; escalating to SIGKILL before reopening');
+      try {
+        previous.kill('SIGKILL');
+      } catch (error) {
+        this._logger.warn(`host: failed to force-stop old UI: ${error.message}`);
+      }
+      escalation = this._setTimeout(finish, UI_REOPEN_KILL_GRACE_MS);
+    }, killTimeoutMs);
+
+    try {
+      previous.kill('SIGTERM');
+    } catch (error) {
+      this._logger.warn(`host: failed to stop old UI for reopen: ${error.message}`);
+      finish();
+    }
     return true;
   }
 

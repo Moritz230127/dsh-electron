@@ -1255,7 +1255,12 @@ function run(electron) {
         } catch {
           // Never block quit on logging.
         }
-        app.quit();
+        // Do NOT call app.quit() again here: with a tray and a
+        // window-all-closed listener Electron does not complete a quit that
+        // was already preventDefault-ed, so the process would linger until
+        // the supervisor SIGKILLs it (slow launcher reopen). Runtime, watcher
+        // and logs are already shut down, so force the process to exit.
+        app.exit(0);
       });
 
     const forceTimer = setTimeout(() => {

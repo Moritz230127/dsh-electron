@@ -148,7 +148,10 @@ function makeFakeElectron() {
     quit() {
       app.quitCount = (app.quitCount || 0) + 1;
     },
-    exit() {},
+    exit(code) {
+      app.exitCount = (app.exitCount || 0) + 1;
+      app.exitCodes = (app.exitCodes || []).concat([code]);
+    },
     relaunch() {},
     disableHardwareAcceleration() {},
     getVersion() {
@@ -302,5 +305,9 @@ test('main.run keeps renderer reloads bounded, self-heals after 60 s, and resets
   const beforeQuit = { prevented: false, preventDefault() { this.prevented = true; } };
   fake.app.emit('before-quit', beforeQuit);
   assert.equal(beforeQuit.prevented, true);
-  await waitFor(() => (fake.app.quitCount || 0) >= 1, 'app.quit after before-quit');
+  // Cleanup completes with app.exit(0); a second app.quit() never completes
+  // when a tray + window-all-closed listener exist (the launcher-reopen hang).
+  await waitFor(() => (fake.app.exitCount || 0) >= 1, 'app.exit after before-quit');
+  assert.deepEqual(fake.app.exitCodes, [0]);
+  assert.equal(fake.app.quitCount || 0, 0, 'no second app.quit() after the prevented one');
 });

@@ -149,7 +149,10 @@ function makeFakeElectron() {
     quit() {
       app.quitCount = (app.quitCount || 0) + 1;
     },
-    exit() {},
+    exit(code) {
+      app.exitCount = (app.exitCount || 0) + 1;
+      app.exitCodes = (app.exitCodes || []).concat([code]);
+    },
     relaunch() {},
     disableHardwareAcceleration() {},
     getVersion() {

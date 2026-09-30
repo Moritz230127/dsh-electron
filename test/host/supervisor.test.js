@@ -116,6 +116,25 @@ function createSpawnRecorder(options = {}) {
   return { calls, cpCount, spawn };
 }
 
+function createControllableUiSpawner(options = {}) {
+  const calls = [];
+  const spawn = (command, args, spawnOptions) => {
+    const child = new EventEmitter();
+    child.pid = 9000 + calls.length;
+    child.killSignals = [];
+    child.kill = (signal) => {
+      child.killSignals.push(signal);
+      if (signal === 'SIGKILL' && options.ignoreSIGKILL !== true) {
+        setImmediate(() => child.emit('exit', null, 'SIGKILL'));
+      }
+      return true;
+    };
+    calls.push({ command, args, options: spawnOptions, child });
+    return child;
+  };
+  return { calls, spawn };
+}
+
 function writeKnownGood(base, version = '9.9.8') {
   const root = path.join(base.base, 'known-good');
   fs.mkdirSync(path.join(root, 'lib'), { recursive: true });
@@ -480,6 +499,70 @@ test('reopenUi replaces the UI window without stopping the DSH runtime', async (
     assert.equal(supervisor.currentRuntime.runtime.isRunning(), true, 'DSH survived UI reopen');
     assert.equal(readUrlFile(supervisor.paths.urlFile), READY_URL);
   } finally {
+    await supervisor.stop('test');
+    fs.rmSync(base.base, { recursive: true, force: true });
+  }
+});
+
+test('reopenUi waits for the old UI to exit before spawning a replacement', async () => {
+  const base = createBase();
+  const { Runtime } = createRuntimeClass([{ type: 'ready', url: READY_URL }]);
+  const recorder = createControllableUiSpawner();
+  const supervisor = new HostSupervisor(makeConfig(base), {
+    HarnessRuntime: Runtime,
+    spawn: recorder.spawn,
+    waitForHealth: async () => ({ statusCode: 200 }),
+    env: {},
+  });
+
+  try {
+    await supervisor.start();
+    assert.equal(recorder.calls.length, 1);
+    const oldUi = recorder.calls[0].child;
+
+    assert.equal(supervisor.reopenUi('unit-test'), true);
+    assert.deepEqual(oldUi.killSignals, ['SIGTERM']);
+    await new Promise((resolve) => setTimeout(resolve, 30));
+    assert.equal(
+      recorder.calls.length,
+      1,
+      'replacement must not start while the old UI still holds the single-instance lock',
+    );
+
+    oldUi.emit('exit', 0, null);
+    await waitFor(() => recorder.calls.length === 2, 1000);
+    assert.equal(supervisor.currentRuntime.runtime.isRunning(), true, 'DSH survived UI reopen');
+    assert.equal(readUrlFile(supervisor.paths.urlFile), READY_URL);
+  } finally {
+    for (const call of recorder.calls) call.child.emit('exit', 0, null);
+    await supervisor.stop('test');
+    fs.rmSync(base.base, { recursive: true, force: true });
+  }
+});
+
+test('reopenUi escalates to SIGKILL when the old UI ignores SIGTERM', async () => {
+  const base = createBase();
+  const { Runtime } = createRuntimeClass([{ type: 'ready', url: READY_URL }]);
+  const recorder = createControllableUiSpawner();
+  const supervisor = new HostSupervisor(makeConfig(base), {
+    HarnessRuntime: Runtime,
+    spawn: recorder.spawn,
+    waitForHealth: async () => ({ statusCode: 200 }),
+    env: {},
+    uiReopenTimeoutMs: 20,
+  });
+
+  try {
+    await supervisor.start();
+    const oldUi = recorder.calls[0].child;
+
+    supervisor.reopenUi('unit-test');
+    await waitFor(() => oldUi.killSignals.includes('SIGKILL'), 1000);
+    assert.deepEqual(oldUi.killSignals, ['SIGTERM', 'SIGKILL']);
+    await waitFor(() => recorder.calls.length === 2, 1000);
+    assert.equal(supervisor.currentRuntime.runtime.isRunning(), true, 'DSH survived UI reopen');
+  } finally {
+    for (const call of recorder.calls) call.child.emit('exit', 0, null);
     await supervisor.stop('test');
     fs.rmSync(base.base, { recursive: true, force: true });
   }

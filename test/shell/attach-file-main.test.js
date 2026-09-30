@@ -151,7 +151,10 @@ function makeFakeElectron() {
     quit() {
       app.quitCount = (app.quitCount || 0) + 1;
     },
-    exit() {},
+    exit(code) {
+      app.exitCount = (app.exitCount || 0) + 1;
+      app.exitCodes = (app.exitCodes || []).concat([code]);
+    },
     relaunch() {
       app.relaunchCalled = true;
     },
@@ -292,6 +295,9 @@ test('attach-url-file mode loads, reloads, recovers after missing and never spaw
   const beforeQuit = { prevented: false, preventDefault() { this.prevented = true; } };
   fake.app.emit('before-quit', beforeQuit);
   assert.equal(beforeQuit.prevented, true);
-  await waitFor(() => (fake.app.quitCount || 0) >= 1, 'app.quit after before-quit');
+  // Cleanup completes with app.exit(0) (a second app.quit() never completes
+  // with a tray + window-all-closed listener; see launcher reopen fix).
+  await waitFor(() => (fake.app.exitCount || 0) >= 1, 'app.exit after before-quit');
+  assert.deepEqual(fake.app.exitCodes, [0]);
   assert.equal(spawnCalls.length, 0);
 });
