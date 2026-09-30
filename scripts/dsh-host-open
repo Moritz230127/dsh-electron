@@ -1,0 +1,23 @@
+#!/bin/sh
+# Ensure the DSH host is running and its GUI is visible.
+#
+# - service inactive -> start it (supervisor starts DSH + Electron)
+# - service active   -> SIGUSR1 tells the supervisor to recreate the UI window,
+#                       so a hidden/closed/blank GUI is restored without
+#                       restarting the DSH server or interrupting tasks.
+set -u
+unit=dsh-host.service
+
+if ! systemctl --user is-active --quiet "$unit"; then
+  exec systemctl --user start "$unit"
+fi
+
+pid=$(systemctl --user show -p MainPID --value "$unit" 2>/dev/null || true)
+case "$pid" in
+  ''|0|*[!0-9]*) exec systemctl --user start "$unit" ;;
+esac
+
+if ! kill -USR1 "$pid" 2>/dev/null; then
+  exec systemctl --user start "$unit"
+fi
+exit 0

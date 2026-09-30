@@ -574,6 +574,32 @@ class HostSupervisor extends EventEmitter {
     return this;
   }
 
+  /**
+   * Recreate the Electron UI window without touching the DSH server.
+   *
+   * Used by the desktop launcher via SIGUSR1: a hidden/closed/blank GUI is
+   * replaced with a fresh attach window while tasks keep running.
+   */
+  reopenUi(reason = 'manual') {
+    if (this._stopping) return false;
+    this._logger.info(`host: UI reopen requested (${reason})`);
+    this._uiIntentionalExit = false;
+    const previous = this._uiChild;
+    this._uiChild = null;
+    if (previous !== null) {
+      try {
+        previous.kill('SIGTERM');
+      } catch (error) {
+        this._logger.warn(`host: failed to stop old UI for reopen: ${error.message}`);
+      }
+    }
+    // Cancel any pending budgeted retry and start immediately.
+    this._uiRetryToken += 1;
+    this._uiRetryActive = false;
+    this._ensureUi();
+    return true;
+  }
+
   waitForStop() {
     if (this._stopPromise !== null) return this._stopPromise;
     return new Promise((resolve) => this.once('stopped', resolve));
@@ -1312,14 +1338,23 @@ async function run(config = {}, seams = {}) {
       supervisor._logger.error(`host: shutdown after ${signal} failed: ${error.message}`);
     });
   };
+  const onReopen = () => {
+    try {
+      supervisor.reopenUi('SIGUSR1');
+    } catch (error) {
+      supervisor._logger.warn(`host: reopen after SIGUSR1 failed: ${error.message}`);
+    }
+  };
   process.once('SIGTERM', onSignal);
   process.once('SIGINT', onSignal);
+  process.on('SIGUSR1', onReopen);
 
   try {
     await supervisor.start();
   } catch (error) {
     process.removeListener('SIGTERM', onSignal);
     process.removeListener('SIGINT', onSignal);
+    process.removeListener('SIGUSR1', onReopen);
     await supervisor.stop('startup-error').catch(() => {});
     throw error;
   }
@@ -1329,6 +1364,7 @@ async function run(config = {}, seams = {}) {
   } finally {
     process.removeListener('SIGTERM', onSignal);
     process.removeListener('SIGINT', onSignal);
+    process.removeListener('SIGUSR1', onReopen);
   }
   return supervisor;
 }

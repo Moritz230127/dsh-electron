@@ -22,11 +22,16 @@ Description=DSH host supervisor (official WebUI + Electron attach UI)
 Conflicts=dsh-web.service
 After=graphical-session.target
 PartOf=graphical-session.target
+Wants=graphical-session.target
 # Keep the supervisor alive even across repeated crashes.
 StartLimitIntervalSec=0
 
 [Service]
 Type=simple
+# Wait until the Wayland socket (or X11 display) is actually present before
+# starting the supervisor. Booting before niri was ready made Electron fail
+# repeatedly and exhaust its UI restart budget.
+ExecStartPre=/usr/bin/bash -c 'for i in {1..120}; do if [ -n "${WAYLAND_DISPLAY:-}" ] && [ -S "$XDG_RUNTIME_DIR/$WAYLAND_DISPLAY" ]; then exit 0; fi; if compgen -G "$XDG_RUNTIME_DIR/wayland-*" >/dev/null 2>&1; then exit 0; fi; if [ -n "${DISPLAY:-}" ]; then exit 0; fi; sleep 0.5; done; exit 1'
 # Optional user overrides; the file may not exist.
 EnvironmentFile=-%h/.config/dsh-host.env
 # Packaged path. install-host.sh renders the dev variant when asked.
@@ -36,4 +41,4 @@ RestartSec=3
 TimeoutStopSec=15
 
 [Install]
-WantedBy=default.target
+WantedBy=graphical-session.target
