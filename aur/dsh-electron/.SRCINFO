@@ -1,6 +1,6 @@
 pkgbase = dsh-electron
 	pkgdesc = Unofficial self-healing Linux host for the official DeepSeek Harness Web UI
-	pkgver = 0.1.3
+	pkgver = 0.1.4
 	pkgrel = 1
 	url = https://github.com/Moritz230127/dsh-electron
 	arch = x86_64
@@ -30,7 +30,7 @@ pkgbase = dsh-electron
 	depends = xdg-utils
 	options = !strip
 	options = !debug
-	source = dsh-electron-0.1.3.tar.gz::https://github.com/Moritz230127/dsh-electron/archive/refs/tags/v0.1.3.tar.gz
-	sha256sums = 2b4e798460c94509fbdf1989f80c7fb5d53dfae4b9a88973bde810fa99abd4f4
+	source = dsh-electron-0.1.4.tar.gz::https://github.com/Moritz230127/dsh-electron/archive/refs/tags/v0.1.4.tar.gz
+	sha256sums = ec8e4d0405b92f40c097f1b2299ca6e404acd35abb9c5cd194bb43282004e049
 
 pkgname = dsh-electron
