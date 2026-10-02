@@ -38,7 +38,7 @@ const {
   installSecurityPolicy,
   redactUrl,
 } = require('./window-manager');
-const { createTray } = require('./tray');
+const { chooseTrayIconPath, createTray } = require('./tray');
 
 const APP_TITLE = 'DSH Electron';
 const HEALTH_TIMEOUT_MS = 15000;
@@ -243,7 +243,7 @@ function smokeSnapshotScript() {
 }
 
 function run(electron) {
-  const { app, BrowserWindow, Tray, Menu, nativeImage, shell, ipcMain } = electron || {};
+  const { app, BrowserWindow, Tray, Menu, nativeImage, nativeTheme, shell, ipcMain } = electron || {};
   if (!app || !BrowserWindow) throw new TypeError('run() requires the Electron module');
 
   const env = process.env;
@@ -309,6 +309,7 @@ function run(electron) {
     runtimeStopped: false,
     window: null,
     tray: null,
+    trayIconPath: '',
     runtime: null,
     runtimeOrigin: null,
     currentHarnessUrl: '',
@@ -382,20 +383,61 @@ function run(electron) {
     }
   }
 
+  /**
+   * Resolve the tray bitmap for the current panel brightness.
+   *
+   * DSH_ELECTRON_TRAY_ICON (absolute path) wins when it exists. Otherwise a
+   * dark panel gets the white whale and a light panel the black one; missing
+   * assets fall back to the other variant so the tray never goes blank.
+   */
   function resolveTrayIconPath() {
-    const candidates = [
-      process.resourcesPath ? path.join(process.resourcesPath, 'icon.png') : '',
-      path.join(__dirname, '..', '..', 'packaging', 'icon.png'),
-    ];
-    for (const candidate of candidates) {
-      if (!candidate) continue;
+    const resources = process.resourcesPath || '';
+    const devDir = path.join(__dirname, '..', '..', 'packaging');
+    const exists = (candidate) => {
       try {
-        if (fs.existsSync(candidate)) return candidate;
+        return fs.existsSync(candidate);
       } catch {
-        // fall through
+        return false;
       }
+    };
+    const darkColors = !!(nativeTheme && nativeTheme.shouldUseDarkColors);
+    const explicit = typeof env.DSH_ELECTRON_TRAY_ICON === 'string' ? env.DSH_ELECTRON_TRAY_ICON.trim() : '';
+    if (explicit && !exists(explicit)) {
+      logger.warn(`tray icon override not found: ${explicit}`);
     }
-    return '';
+    return chooseTrayIconPath({
+      explicit,
+      white: [
+        resources ? path.join(resources, 'icon-white.png') : '',
+        path.join(devDir, 'icon-white.png'),
+      ],
+      black: [
+        resources ? path.join(resources, 'icon.png') : '',
+        path.join(devDir, 'icon.png'),
+      ],
+      darkColors,
+      exists,
+    });
+  }
+
+  /** Switch the live tray bitmap when the desktop color scheme changes. */
+  function refreshTrayIcon() {
+    const tray = state.tray;
+    if (!tray || typeof tray.setImage !== 'function') return;
+    const iconPath = resolveTrayIconPath();
+    if (!iconPath || iconPath === state.trayIconPath) return;
+    try {
+      const image = nativeImage && typeof nativeImage.createFromPath === 'function'
+        ? nativeImage.createFromPath(iconPath)
+        : null;
+      if (image && (typeof image.isEmpty !== 'function' || !image.isEmpty())) {
+        tray.setImage(image);
+        state.trayIconPath = iconPath;
+        logger.info(`tray icon switched to ${iconPath}`);
+      }
+    } catch (error) {
+      logger.warn(`tray icon refresh failed: ${error.message}`);
+    }
   }
 
   function ensureWindow() {
@@ -1164,7 +1206,12 @@ function run(electron) {
       return null;
     }
     const iconPath = resolveTrayIconPath();
-    return createTray({
+    logger.info(
+      iconPath
+        ? `tray icon: ${iconPath} (${nativeTheme && nativeTheme.shouldUseDarkColors ? 'dark' : 'light'} panel)`
+        : 'tray icon: no asset found; falling back to the built-in dot',
+    );
+    const tray = createTray({
       Tray,
       Menu,
       nativeImage,
@@ -1176,6 +1223,11 @@ function run(electron) {
       onQuit: hideMainWindow, // legacy: never quit the UI from the tray by accident
       logger,
     });
+    state.trayIconPath = iconPath;
+    if (tray && nativeTheme && typeof nativeTheme.on === 'function') {
+      nativeTheme.on('updated', refreshTrayIcon);
+    }
+    return tray;
   }
 
   function isTrustedIpcSender(event) {

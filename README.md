@@ -103,7 +103,8 @@ requires no change in this host; if the CLI contract changes, only
 - GPU fallback ladder: `default → --disable-gpu-sandbox → --disable-gpu --disable-gpu-compositing`
 - internal known-good DSH runtime fallback
 - atomic 0600 URL/status files
-- systemd user unit, XDG autostart/launcher integration, official DSH tray icon
+- systemd user unit, XDG autostart/launcher integration, theme-aware DSH tray icon
+  (white whale on dark panels, black on light; override with `DSH_ELECTRON_TRAY_ICON=/abs/path.png`)
 - niri/Wayland-friendly window rule (exclude the window from global blur/opacity)
 - Linux packaging: unpacked dir, AppImage, pacman package
 

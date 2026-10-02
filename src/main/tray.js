@@ -10,6 +10,43 @@
 const FALLBACK_ICON_DATA_URL =
   'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAS0lEQVR42mNgoAVYdeTXf3RMtkYQrlr0HY4p0ozXEGI1YzWAFM1YDSFVM14DiNGM0wBiNWM1gBTNWAOSIs1UMYBYQ4hK0mRrHBAAADzpsPtNxZDvAAAAAElFTkSuQmCC';
 
+/**
+ * Pick the tray bitmap for the current panel brightness.
+ *
+ * Linux StatusNotifier items have no template-image concept, so one static
+ * PNG cannot contrast with both dark and light panels. We ship a black and a
+ * white whale and prefer the contrasting one:
+ *   explicit override > white (dark panel) / black (light panel)
+ * Missing preferred files fall back to the other variant; '' means no asset.
+ *
+ * @param {{
+ *   explicit?: string,
+ *   white?: string|string[],
+ *   black?: string|string[],
+ *   darkColors?: boolean,
+ *   exists?: (candidate: string) => boolean
+ * }} options
+ * @returns {string} absolute icon path, or '' when nothing exists
+ */
+function chooseTrayIconPath({ explicit, white, black, darkColors, exists } = {}) {
+  const has = typeof exists === 'function' ? exists : () => false;
+  const list = (value) => (Array.isArray(value) ? value : [value]).filter(
+    (candidate) => typeof candidate === 'string' && candidate.length > 0,
+  );
+  const first = (...groups) => {
+    for (const group of groups) {
+      for (const candidate of list(group)) {
+        if (has(candidate)) return candidate;
+      }
+    }
+    return '';
+  };
+
+  const override = typeof explicit === 'string' ? explicit.trim() : '';
+  if (override && has(override)) return override;
+  return darkColors === true ? first(white, black) : first(black, white);
+}
+
 function safeCallback(fn, label, logger) {
   return function handleMenuClick(...args) {
     if (typeof fn !== 'function') return;
@@ -112,5 +149,6 @@ function createTray({
 module.exports = {
   FALLBACK_ICON_DATA_URL,
   buildTrayMenuTemplate,
+  chooseTrayIconPath,
   createTray,
 };

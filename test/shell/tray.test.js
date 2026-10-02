@@ -3,7 +3,12 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
-const { FALLBACK_ICON_DATA_URL, buildTrayMenuTemplate, createTray } = require('../../src/main/tray');
+const {
+  FALLBACK_ICON_DATA_URL,
+  buildTrayMenuTemplate,
+  chooseTrayIconPath,
+  createTray,
+} = require('../../src/main/tray');
 
 test('buildTrayMenuTemplate exposes Show / Restart Harness / Hide', () => {
   const calls = [];
@@ -126,4 +131,82 @@ test('createTray returns null when Tray is unavailable or throws', () => {
   assert.equal(createTray({ Tray: ThrowingTray, logger }), null);
   assert.equal(warnings.length, 2);
   assert.match(warnings[1], /no StatusNotifier host/);
+});
+
+test('chooseTrayIconPath prefers white on dark panels and black on light panels', () => {
+  const existing = new Set(['/a/black.png', '/a/white.png']);
+  const exists = (candidate) => existing.has(candidate);
+
+  assert.equal(
+    chooseTrayIconPath({
+      white: ['/a/white.png'],
+      black: ['/a/black.png'],
+      darkColors: true,
+      exists,
+    }),
+    '/a/white.png',
+  );
+  assert.equal(
+    chooseTrayIconPath({
+      white: ['/a/white.png'],
+      black: ['/a/black.png'],
+      darkColors: false,
+      exists,
+    }),
+    '/a/black.png',
+  );
+  assert.equal(
+    chooseTrayIconPath({
+      white: ['/a/white.png'],
+      black: ['/a/black.png'],
+      darkColors: undefined,
+      exists,
+    }),
+    '/a/black.png',
+  );
+});
+
+test('chooseTrayIconPath falls back when the preferred variant is missing', () => {
+  assert.equal(
+    chooseTrayIconPath({
+      white: ['/a/white.png'],
+      black: ['/a/black.png'],
+      darkColors: true,
+      exists: (candidate) => candidate === '/a/black.png',
+    }),
+    '/a/black.png',
+  );
+  assert.equal(
+    chooseTrayIconPath({
+      white: ['/a/white.png'],
+      black: ['/a/black.png'],
+      darkColors: false,
+      exists: (candidate) => candidate === '/a/white.png',
+    }),
+    '/a/white.png',
+  );
+});
+
+test('chooseTrayIconPath honours an existing explicit override and returns empty otherwise', () => {
+  assert.equal(
+    chooseTrayIconPath({
+      explicit: ' /custom/tray.png ',
+      white: ['/a/white.png'],
+      black: ['/a/black.png'],
+      darkColors: false,
+      exists: (candidate) => candidate === '/custom/tray.png',
+    }),
+    '/custom/tray.png',
+  );
+  assert.equal(
+    chooseTrayIconPath({
+      explicit: '/missing/tray.png',
+      white: ['/a/white.png'],
+      black: ['/a/black.png'],
+      darkColors: true,
+      exists: (candidate) => candidate === '/a/white.png',
+    }),
+    '/a/white.png',
+  );
+  assert.equal(chooseTrayIconPath({}), '');
 });

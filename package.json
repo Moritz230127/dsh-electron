@@ -1,7 +1,7 @@
 {
   "name": "dsh-electron",
   "productName": "DSH Electron",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "Unofficial Linux host for the official DeepSeek Harness Web UI — self-healing, version-decoupled, zero-maintenance.",
   "main": "src/main/main.js",
   "private": true,
@@ -112,6 +112,10 @@
       {
         "from": "packaging/icon.png",
         "to": "icon.png"
+      },
+      {
+        "from": "packaging/icon-white.png",
+        "to": "icon-white.png"
       }
     ]
   },
