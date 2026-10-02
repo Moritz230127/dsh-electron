@@ -70,10 +70,13 @@ package() {
 
   install -Dm644 packaging/deepseek-harness.desktop \
     "$pkgdir/usr/share/applications/deepseek-harness.desktop"
-  install -Dm644 packaging/icon.png \
+  # White whale launcher icon at every launcher size (all icons white).
+  install -Dm644 packaging/icon-white.png \
     "$pkgdir/usr/share/icons/hicolor/256x256/apps/deepseek-harness.png"
-  install -Dm644 packaging/icon-32.png \
-    "$pkgdir/usr/share/icons/hicolor/32x32/apps/deepseek-harness.png"
+  for size in 16 24 32 48 64 128; do
+    install -Dm644 "packaging/icon-white-${size}.png" \
+      "$pkgdir/usr/share/icons/hicolor/${size}x${size}/apps/deepseek-harness.png"
+  done
 
   install -Dm644 packaging/niri-window-rule.kdl \
     "$pkgdir/usr/share/doc/$pkgname/niri-window-rule.kdl"
